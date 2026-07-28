@@ -12,3 +12,13 @@ export {
   writeDeviceServerState,
   type DeviceServerState,
 } from "./state";
+export type {
+  BackendCapabilities,
+  BackendKind,
+  DeviceBackend,
+  DevicePlatform,
+  GesturePointEvent,
+  HardwareButton,
+  ListedDevice,
+  ScreenshotResult,
+} from "./device-backend";
