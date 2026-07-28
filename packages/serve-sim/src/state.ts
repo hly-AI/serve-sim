@@ -1,9 +1,16 @@
-import { tmpdir } from "os";
 import { join } from "path";
-import { readdirSync, mkdirSync, writeFileSync, renameSync } from "fs";
+import { SERVE_SIM_PRODUCT } from "serve-runtime";
+import {
+  inProcessDeviceServerState,
+  listStateFiles as listStateFilesFor,
+  stateDirFor,
+  stateFileForDevice as stateFileForDeviceFor,
+  writeDeviceServerState,
+  type DeviceServerState,
+} from "serve-runtime";
 
 /** Directory where serve-sim stores runtime state. */
-export const STATE_DIR = join(tmpdir(), "serve-sim");
+export const STATE_DIR = stateDirFor(SERVE_SIM_PRODUCT);
 
 /** Path to the serve-sim server state file (JSON with pid, port, URLs).
  *  @deprecated Use `stateFileForDevice(udid)` for multi-device support. Kept for backward compat. */
@@ -11,18 +18,11 @@ export const STATE_FILE = join(STATE_DIR, "server.json");
 
 /** Per-device state file: `/tmp/serve-sim/server-{udid}.json` */
 export function stateFileForDevice(udid: string): string {
-  return join(STATE_DIR, `server-${udid}.json`);
+  return stateFileForDeviceFor(SERVE_SIM_PRODUCT, udid);
 }
 
 /** Runtime record for a device streamed in-process by a preview server. */
-export interface ServeSimDeviceState {
-  pid: number;
-  port: number;
-  device: string;
-  url: string;
-  streamUrl: string;
-  wsUrl: string;
-}
+export type ServeSimDeviceState = DeviceServerState;
 
 /**
  * Build the state for a device served in-process. There's no separate helper
@@ -36,39 +36,17 @@ export function inProcessServeSimState(
   base = "/",
   host = "127.0.0.1",
 ): ServeSimDeviceState {
-  const h = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
-  // Normalize to a leading-slash, no-trailing-slash prefix so a base without a
-  // leading slash (e.g. "foo") still yields well-formed `…:port/foo/helper/…`.
-  const trimmed = base.replace(/^\/+/, "").replace(/\/+$/, "");
-  const prefix = trimmed === "" ? "" : `/${trimmed}`;
-  return {
-    pid: process.pid,
-    port,
-    device: udid,
-    url: `http://${h}:${port}`,
-    streamUrl: `http://${h}:${port}${prefix}/helper/${udid}/stream.mjpeg`,
-    wsUrl: `ws://${h}:${port}${prefix}/helper/${udid}/ws`,
-  };
+  return inProcessDeviceServerState(SERVE_SIM_PRODUCT, udid, port, base, host);
 }
 
 /** Persist a device's state so other processes / the grid can enumerate it.
  *  Writes atomically (temp file + rename) so a concurrent reader never observes
  *  a truncated or partially-written file. */
 export function writeServeSimState(state: ServeSimDeviceState): void {
-  mkdirSync(STATE_DIR, { recursive: true });
-  const file = stateFileForDevice(state.device);
-  const tmp = `${file}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify(state, null, 2));
-  renameSync(tmp, file);
+  writeDeviceServerState(SERVE_SIM_PRODUCT, state);
 }
 
 /** List all per-device state files in the state directory. */
 export function listStateFiles(): string[] {
-  try {
-    return readdirSync(STATE_DIR)
-      .filter((f) => f.startsWith("server-") && f.endsWith(".json"))
-      .map((f) => join(STATE_DIR, f));
-  } catch {
-    return [];
-  }
+  return listStateFilesFor(SERVE_SIM_PRODUCT);
 }
