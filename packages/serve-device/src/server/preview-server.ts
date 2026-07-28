@@ -26,21 +26,40 @@ const HTML_TEMPLATE = `<!doctype html>
         justify-content: center; min-height: 100%; gap: 12px; padding: 16px;
         box-sizing: border-box; }
       img { max-width: min(100%, 420px); width: 100%; height: auto;
-        background: #000; border: 1px solid #333; }
-      code { font-size: 12px; opacity: 0.8; }
+        background: #000; border: 1px solid #333; min-height: 120px; }
+      code { font-size: 12px; opacity: 0.8; max-width: min(100%, 520px);
+        white-space: pre-wrap; word-break: break-word; }
+      .err { color: #f88; opacity: 1; }
     </style>
   </head>
   <body>
     <main>
       <img id="stream" alt="device stream" />
       <code id="meta"></code>
+      <code id="err" class="err"></code>
     </main>
     <script>
       const udid = "__UDID__";
       const img = document.getElementById("stream");
       const meta = document.getElementById("meta");
+      const err = document.getElementById("err");
       img.src = "/helper/" + encodeURIComponent(udid) + "/stream.mjpeg";
       meta.textContent = "serve-device · " + udid + " · USB MJPEG";
+      async function pollHealth() {
+        try {
+          const r = await fetch("/helper/" + encodeURIComponent(udid) + "/health");
+          const j = await r.json();
+          if (j.lastCaptureError && !j.hasFrame) {
+            err.textContent = "No frames yet: " + j.lastCaptureError;
+          } else if (j.hasFrame) {
+            err.textContent = "";
+          }
+        } catch (e) {
+          err.textContent = "health check failed";
+        }
+      }
+      pollHealth();
+      setInterval(pollHealth, 2000);
     </script>
   </body>
 </html>
@@ -61,7 +80,7 @@ export async function startPreviewServer(opts: {
         return shot.bytes;
       },
     },
-    { fps: opts.fps ?? 5 },
+    { fps: opts.fps ?? 1 },
   );
 
   const html = HTML_TEMPLATE.replaceAll("__UDID__", opts.udid);

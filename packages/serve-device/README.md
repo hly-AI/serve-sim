@@ -9,7 +9,9 @@ Companion to [`serve-sim`](https://www.npmjs.com/package/serve-sim) (simulator-o
 - **macOS only** + Xcode / `xcrun devicectl`
 - Node.js **>= 20**
 - **USB** connection for v1 (Wi‑Fi later)
-- Apple Developer **Team ID** + WebDriverAgent for touch
+- **Screenshot tools** (for preview / `screenshot` on Xcode without `device capture`):
+  Python **3.12+** + `pymobiledevice3` in the cache venv (see below)
+- Apple Developer **Team ID** + WebDriverAgent for touch (optional if you only need stream)
 
 ## Scope
 
@@ -21,7 +23,21 @@ Companion to [`serve-sim`](https://www.npmjs.com/package/serve-sim) (simulator-o
 | Camera / permissions / AX | Not in v1 |
 | Android / Wi‑Fi transport | Not in v1 |
 
-## Quick start
+## Quick start (stream only — no WDA)
+
+```bash
+# One-time screenshot backend (Xcode 26 / iOS 17+)
+brew install python@3.12   # if needed
+python3.12 -m venv ~/Library/Caches/serve-device/pmd3-venv
+~/Library/Caches/serve-device/pmd3-venv/bin/pip install -U pymobiledevice3
+
+npx serve-device doctor -d <udid>
+npx serve-device -d <udid>          # http://localhost:4200
+```
+
+Override binary path with `SERVE_DEVICE_PMD3=/path/to/pymobiledevice3`.
+
+## Quick start (with touch)
 
 ```bash
 npx serve-device doctor

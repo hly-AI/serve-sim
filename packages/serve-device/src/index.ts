@@ -317,18 +317,28 @@ program
 program
   .command("setup")
   .description("Clone/build WebDriverAgent for a USB device (requires Team ID)")
-  .requiredOption("-d, --device <udid|name>", "Target device")
+  // Same flag as the root command; Commander stores it on the parent, so resolve
+  // via optsWithGlobals() instead of requiredOption (which never sees -d).
+  .option("-d, --device <udid|name>", "Target device")
   .option("--team-id <id>", "Apple Developer Team ID (or SERVE_DEVICE_TEAM_ID)")
   .option("--wda-path <path>", "Existing WebDriverAgent checkout")
-  .action(
-    async (opts: { device: string; teamId?: string; wdaPath?: string }) => {
+  .action(async (_opts: unknown, command: Command) => {
       await withErrors(async () => {
+        // Parent also declares `-d`; Commander parks shared flags on globals.
+        const g = command.optsWithGlobals() as {
+          device?: string;
+          teamId?: string;
+          wdaPath?: string;
+        };
+        if (!g.device) {
+          throw new Error("Missing required option `-d, --device <udid|name>`");
+        }
         const backend = defaultBackend();
-        const udid = await backend.resolveDevice(opts.device);
+        const udid = await backend.resolveDevice(g.device);
         await runSetup({
           udid,
-          teamId: opts.teamId,
-          wdaPath: opts.wdaPath,
+          teamId: g.teamId,
+          wdaPath: g.wdaPath,
         });
       });
     },

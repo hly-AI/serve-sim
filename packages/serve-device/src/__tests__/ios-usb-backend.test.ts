@@ -38,6 +38,15 @@ describe("IosUsbDeviceBackend", () => {
     );
   });
 
+  test("resolveDevice matches CoreDevice identifier", async () => {
+    const backend = createIosUsbDeviceBackend({
+      listDevicesRaw: () => fixture,
+    });
+    expect(
+      await backend.resolveDevice("AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE"),
+    ).toBe("00008150-00156C6C3A40C01C");
+  });
+
   test("installApp and launchApp pass verified argv", async () => {
     const calls: string[][] = [];
     const backend = createIosUsbDeviceBackend({

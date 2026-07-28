@@ -25,6 +25,7 @@ export class DeviceCaptureSession {
   private readonly intervalMs: number;
   private lastFrame: Buffer | null = null;
   private capturing = false;
+  private lastCaptureError: string | null = null;
 
   constructor(
     readonly udid: string,
@@ -40,7 +41,15 @@ export class DeviceCaptureSession {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
     });
-    res.end(JSON.stringify({ status: "ok", udid: this.udid }));
+    res.end(
+      JSON.stringify({
+        status: "ok",
+        udid: this.udid,
+        hasFrame: this.lastFrame != null,
+        lastCaptureError: this.lastCaptureError,
+        clients: this.clients.size,
+      }),
+    );
   }
 
   handleConfig(_req: IncomingMessage, res: ServerResponse): void {
@@ -104,11 +113,14 @@ export class DeviceCaptureSession {
     try {
       const frame = await this.source.capture();
       this.lastFrame = frame;
+      this.lastCaptureError = null;
       for (const res of this.clients) {
         this.writeFrame(res, frame);
       }
-    } catch {
-      // Drop failed captures; next tick retries.
+    } catch (err) {
+      // Drop failed captures; next tick retries. Surface reason on /health.
+      this.lastCaptureError =
+        err instanceof Error ? err.message : String(err);
     } finally {
       this.capturing = false;
     }

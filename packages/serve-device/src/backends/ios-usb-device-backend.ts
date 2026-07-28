@@ -1,6 +1,3 @@
-import { mkdtempSync, readFileSync, rmSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
 import type {
   BackendCapabilities,
   DeviceBackend,
@@ -16,6 +13,7 @@ import {
   runDevicectl,
   type DevicectlDevice,
 } from "./devicectl";
+import { captureDeviceScreenshot } from "./screenshot-capture";
 import { WdaClient } from "../wda/wda-client";
 
 const WDA_ERR =
@@ -64,15 +62,22 @@ export function createIosUsbDeviceBackend(deps?: {
     return client;
   }
 
-  async function listDevices(): Promise<ListedDevice[]> {
+  async function listRawUsbDevices(): Promise<DevicectlDevice[]> {
     const raw = deps?.listDevicesRaw
       ? deps.listDevicesRaw()
       : listDevicectlDevices();
+    return raw.filter((d) => {
+      if (d.reality != null && d.reality !== "physical") return false;
+      if (d.platform != null && !/^iOS$/i.test(d.platform)) return false;
+      if (isNetworkTransport(d.connectionProperties?.transportType))
+        return false;
+      return true;
+    });
+  }
+
+  async function listDevices(): Promise<ListedDevice[]> {
     const listed: ListedDevice[] = [];
-    for (const d of raw) {
-      if (d.reality != null && d.reality !== "physical") continue;
-      if (d.platform != null && !/^iOS$/i.test(d.platform)) continue;
-      if (isNetworkTransport(d.connectionProperties?.transportType)) continue;
+    for (const d of await listRawUsbDevices()) {
       listed.push({
         udid: d.udid,
         name: d.name,
@@ -85,37 +90,22 @@ export function createIosUsbDeviceBackend(deps?: {
   }
 
   async function resolveDevice(nameOrUdid: string): Promise<string> {
-    const devices = await listDevices();
+    const devices = await listRawUsbDevices();
+    const needle = nameOrUdid.toLowerCase();
     const hit = devices.find(
       (d) =>
         d.udid === nameOrUdid ||
-        d.name.toLowerCase() === nameOrUdid.toLowerCase(),
+        d.identifier === nameOrUdid ||
+        d.name.toLowerCase() === needle,
     );
     if (!hit) throw new Error(`Could not resolve device: ${nameOrUdid}`);
     return hit.udid;
   }
 
   async function defaultScreenshot(udid: string): Promise<Buffer> {
-    // Verified argv (Xcode CoreDevice):
-    //   xcrun devicectl device capture screenshot --device <udid> --destination <path.png>
-    const dir = mkdtempSync(join(tmpdir(), "serve-device-shot-"));
-    const dest = join(dir, "shot.png");
-    try {
-      run([
-        "device",
-        "capture",
-        "screenshot",
-        "--device",
-        udid,
-        "--destination",
-        dest,
-      ]);
-      return readFileSync(dest);
-    } finally {
-      try {
-        rmSync(dir, { recursive: true, force: true });
-      } catch {}
-    }
+    return captureDeviceScreenshot(udid, {
+      runDevicectl: run,
+    });
   }
 
   return {
@@ -127,7 +117,10 @@ export function createIosUsbDeviceBackend(deps?: {
       const bytes = deps?.screenshotToBuffer
         ? await deps.screenshotToBuffer(udid)
         : await defaultScreenshot(udid);
-      return { bytes, contentType: "image/png" };
+      // Injected buffers may be PNG; native path prefers JPEG for MJPEG.
+      const contentType =
+        bytes[0] === 0xff && bytes[1] === 0xd8 ? "image/jpeg" : "image/png";
+      return { bytes, contentType };
     },
     async installApp(udid: string, appPath: string): Promise<void> {
       run(["device", "install", "app", "--device", udid, appPath]);

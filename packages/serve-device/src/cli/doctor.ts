@@ -1,6 +1,7 @@
 import { execFileSync } from "child_process";
 import type { DeviceBackend } from "serve-runtime";
 import { createIosUsbDeviceBackend } from "../backends/ios-usb-device-backend";
+import { resolvePmd3Bin } from "../backends/screenshot-capture";
 import { WdaClient } from "../wda/wda-client";
 
 export interface DoctorReport {
@@ -118,6 +119,15 @@ export async function runDoctor(
     usbMsg = err instanceof Error ? err.message : String(err);
   }
   checks.push({ id: "device.usb", ok: usbOk, message: usbMsg });
+
+  const pmd3 = resolvePmd3Bin();
+  checks.push({
+    id: "screenshot.pmd3",
+    ok: !!pmd3,
+    message: pmd3
+      ? `pymobiledevice3 at ${pmd3} (iOS 17+ screenshot fallback)`
+      : "pymobiledevice3 not found — needed on Xcode without `device capture screenshot`. See README Screenshot tools.",
+  });
 
   const wda = new WdaClient({
     baseUrl: wdaBaseUrl,
