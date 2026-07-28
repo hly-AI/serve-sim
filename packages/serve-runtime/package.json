@@ -1,0 +1,19 @@
+{
+  "name": "serve-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "bun test src"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
