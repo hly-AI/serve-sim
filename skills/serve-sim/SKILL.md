@@ -23,7 +23,7 @@ Drive an Apple Simulator (iOS, iPad, Apple Watch) from an agent using the [serve
 - Android emulators → use `adb shell` tooling.
 - Building or installing an iOS app → use `xcodebuild` or `xcrun simctl install`.
 - React Native in-app runtime debugging (Redux state, network inspection, component tree) → use rn-debugger tooling.
-- Real iOS hardware devices → use `xcrun devicectl` or Xcode.
+- Real iOS hardware devices → use `npx serve-device` (this skill is simulator-only).
 
 ## Prerequisites
 

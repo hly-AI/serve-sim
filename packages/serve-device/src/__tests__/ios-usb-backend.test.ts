@@ -67,11 +67,50 @@ describe("IosUsbDeviceBackend", () => {
     ]);
   });
 
-  test("tap throws WDA message", async () => {
+  test("tap throws WDA message when agent unreachable", async () => {
     const backend = createIosUsbDeviceBackend({
       listDevicesRaw: () => fixture,
+      wda: {
+        async status() {
+          return { ready: false, detail: "down" };
+        },
+        async ensureSession() {
+          throw new Error("no");
+        },
+        async getWindowSize() {
+          return { width: 1, height: 1 };
+        },
+        async tap() {},
+        async pressButton() {},
+        async performGesture() {},
+      } as any,
     });
     await expect(backend.tap("u", 0.5, 0.5)).rejects.toThrow(/WebDriverAgent/);
+  });
+
+  test("tap delegates to WDA when ready", async () => {
+    const taps: Array<{ x: number; y: number }> = [];
+    const backend = createIosUsbDeviceBackend({
+      listDevicesRaw: () => fixture,
+      wda: {
+        async status() {
+          return { ready: true, detail: "ok" };
+        },
+        async ensureSession() {
+          return "S";
+        },
+        async getWindowSize() {
+          return { width: 390, height: 844 };
+        },
+        async tap(x: number, y: number) {
+          taps.push({ x, y });
+        },
+        async pressButton() {},
+        async performGesture() {},
+      } as any,
+    });
+    await backend.tap("u", 0.5, 0.9);
+    expect(taps).toEqual([{ x: 0.5, y: 0.9 }]);
   });
 
   test("screenshot uses injectable buffer source", async () => {

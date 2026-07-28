@@ -7,13 +7,14 @@ import { killStreams, listStreams } from "./cli/list-kill";
 import {
   defaultBackend,
   runButton,
-  runDoctor,
   runGesture,
   runInstall,
   runLaunch,
   runScreenshot,
   runTap,
 } from "./cli/backend-commands";
+import { formatDoctorReport, runDoctor } from "./cli/doctor";
+import { runSetup } from "./wda/setup";
 import { startPreviewServer } from "./server/preview-server";
 import { spawn } from "child_process";
 
@@ -294,11 +295,43 @@ program
 
 program
   .command("doctor")
-  .description("Check host prerequisites for serve-device")
-  .action(() => {
-    const report = runDoctor();
-    for (const line of report.lines) console.log(line);
-    if (!report.ok) process.exitCode = 1;
-  });
+  .description("Check host / USB / WDA prerequisites for serve-device")
+  .option("-d, --device <udid|name>", "Target device")
+  .option("--json", "Print JSON report")
+  .option("--wda-url <url>", "WDA base URL (default http://127.0.0.1:8100)")
+  .action(
+    async (opts: { device?: string; json?: boolean; wdaUrl?: string }) => {
+      const report = await runDoctor({
+        udid: opts.device,
+        wdaBaseUrl: opts.wdaUrl,
+      });
+      if (opts.json) {
+        console.log(JSON.stringify(report, null, 2));
+      } else {
+        console.log(formatDoctorReport(report));
+      }
+      if (!report.ok) process.exitCode = 1;
+    },
+  );
+
+program
+  .command("setup")
+  .description("Clone/build WebDriverAgent for a USB device (requires Team ID)")
+  .requiredOption("-d, --device <udid|name>", "Target device")
+  .option("--team-id <id>", "Apple Developer Team ID (or SERVE_DEVICE_TEAM_ID)")
+  .option("--wda-path <path>", "Existing WebDriverAgent checkout")
+  .action(
+    async (opts: { device: string; teamId?: string; wdaPath?: string }) => {
+      await withErrors(async () => {
+        const backend = defaultBackend();
+        const udid = await backend.resolveDevice(opts.device);
+        await runSetup({
+          udid,
+          teamId: opts.teamId,
+          wdaPath: opts.wdaPath,
+        });
+      });
+    },
+  );
 
 await program.parseAsync(process.argv);

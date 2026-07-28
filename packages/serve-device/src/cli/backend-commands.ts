@@ -1,4 +1,3 @@
-import { execSync } from "child_process";
 import { writeFileSync } from "fs";
 import type {
   DeviceBackend,
@@ -146,36 +145,4 @@ export async function runLaunch(
   const { backend } = depsWithDefaults(deps);
   const udid = await resolveTargetUdid(backend, deviceArg);
   await backend.launchApp(udid, bundleId);
-}
-
-export function runDoctor(): { ok: boolean; lines: string[] } {
-  const lines: string[] = [];
-  let ok = true;
-
-  if (process.platform !== "darwin") {
-    lines.push("host: FAIL — serve-device requires macOS");
-    ok = false;
-  } else {
-    lines.push("host: OK (macOS)");
-  }
-
-  const major = Number(process.versions.node.split(".")[0]);
-  if (!Number.isFinite(major) || major < 20) {
-    lines.push(`node: FAIL — need Node >= 20 (found ${process.versions.node})`);
-    ok = false;
-  } else {
-    lines.push(`node: OK (${process.versions.node})`);
-  }
-
-  try {
-    execSync("xcrun --version", { stdio: "pipe" });
-    lines.push("xcrun: OK");
-  } catch {
-    lines.push("xcrun: FAIL — install Xcode command line tools");
-    ok = false;
-  }
-
-  lines.push("USB backend: ready (devicectl)");
-  lines.push("WDA: not ready");
-  return { ok, lines };
 }

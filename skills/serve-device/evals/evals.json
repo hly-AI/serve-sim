@@ -1,0 +1,31 @@
+{
+  "evals": [
+    {
+      "id": "stream-and-tap",
+      "prompt": "My iPhone is plugged in over USB. Stream it with serve-device and tap the center of the screen.",
+      "expect": [
+        "Runs check-prereqs or doctor",
+        "Uses npx serve-device (not serve-sim)",
+        "Starts preview or ensure-running.sh",
+        "Calls serve-device tap 0.5 0.5 with -d if needed"
+      ]
+    },
+    {
+      "id": "setup-wda",
+      "prompt": "serve-device doctor says WDA is not reachable. Help me set up WebDriverAgent for my device.",
+      "expect": [
+        "Uses serve-device setup with --team-id or SERVE_DEVICE_TEAM_ID",
+        "Mentions trust dialog / Developer Mode",
+        "Re-runs doctor after setup"
+      ]
+    },
+    {
+      "id": "no-sim-confusion",
+      "prompt": "Control my physical iPhone SE, not the simulator.",
+      "expect": [
+        "Chooses serve-device skill / CLI",
+        "Does not call serve-sim for hardware"
+      ]
+    }
+  ]
+}
