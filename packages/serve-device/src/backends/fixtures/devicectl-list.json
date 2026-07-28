@@ -1,0 +1,87 @@
+{
+  "info": {
+    "arguments": [
+      "devicectl",
+      "list",
+      "devices",
+      "--json-output",
+      "out.json"
+    ],
+    "commandType": "devicectl.list.devices",
+    "jsonVersion": 4,
+    "outcome": "success",
+    "version": "629.3"
+  },
+  "result": {
+    "devices": [
+      {
+        "identifier": "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+        "connectionProperties": {
+          "pairingState": "paired",
+          "transportType": "wired",
+          "tunnelState": "connected"
+        },
+        "deviceProperties": {
+          "name": "Evan's iPhone",
+          "developerModeStatus": "enabled"
+        },
+        "hardwareProperties": {
+          "platform": "iOS",
+          "reality": "physical",
+          "udid": "00008150-00156C6C3A40C01C",
+          "marketingName": "iPhone 17"
+        }
+      },
+      {
+        "identifier": "BBBBBBBB-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+        "connectionProperties": {
+          "pairingState": "paired",
+          "transportType": "localNetwork",
+          "tunnelState": "connected"
+        },
+        "deviceProperties": {
+          "name": "WiFi Only Phone"
+        },
+        "hardwareProperties": {
+          "platform": "iOS",
+          "reality": "physical",
+          "udid": "00008150-00WIFIONLY000001",
+          "marketingName": "iPhone 16"
+        }
+      },
+      {
+        "identifier": "CCCCCCCC-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+        "connectionProperties": {
+          "pairingState": "paired",
+          "transportType": "sameMachine",
+          "tunnelState": "disconnected"
+        },
+        "deviceProperties": {
+          "name": "iPhone 16 Simulator"
+        },
+        "hardwareProperties": {
+          "platform": "iOS",
+          "reality": "simulated",
+          "udid": "0513AEA7-C498-4FB5-B0A5-25AA8A94C98E",
+          "marketingName": "iPhone 16"
+        }
+      },
+      {
+        "identifier": "DDDDDDDD-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+        "connectionProperties": {
+          "pairingState": "paired",
+          "tunnelState": "unavailable"
+        },
+        "deviceProperties": {
+          "name": "Paired But Offline"
+        },
+        "hardwareProperties": {
+          "platform": "iOS",
+          "reality": "physical",
+          "udid": "00008150-00OFFLINE0000001",
+          "marketingName": "iPhone SE"
+        }
+      }
+    ]
+  }
+}

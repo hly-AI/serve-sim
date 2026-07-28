@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import { PRODUCT } from "./product";
 import { killStreams, listStreams } from "./cli/list-kill";
 import {
+  defaultBackend,
   runButton,
   runDoctor,
   runGesture,
@@ -13,6 +14,8 @@ import {
   runScreenshot,
   runTap,
 } from "./cli/backend-commands";
+import { startPreviewServer } from "./server/preview-server";
+import { spawn } from "child_process";
 
 function resolveVersion(): string {
   try {
@@ -37,6 +40,104 @@ async function withErrors(fn: () => Promise<void> | void): Promise<void> {
   }
 }
 
+async function servePreview(opts: {
+  port?: number;
+  host?: string;
+  device?: string;
+  quiet?: boolean;
+}): Promise<void> {
+  const backend = defaultBackend();
+  const udid = opts.device
+    ? await backend.resolveDevice(opts.device)
+    : await (async () => {
+        const listed = await backend.listDevices();
+        const hit = listed.find((d) => d.available) ?? listed[0];
+        if (!hit) {
+          throw new Error(
+            "No USB iOS device available. Plug in a device and trust this computer.",
+          );
+        }
+        return hit.udid;
+      })();
+
+  const host = opts.host ?? "127.0.0.1";
+  const port = opts.port ?? PRODUCT.defaultPreviewPort;
+  const { port: bound, stop } = await startPreviewServer({
+    port,
+    host,
+    udid,
+    backend,
+  });
+
+  const clear = () => {
+    try {
+      stop();
+    } catch {}
+  };
+  process.on("exit", clear);
+  process.on("SIGINT", () => process.exit(0));
+  process.on("SIGTERM", () => process.exit(0));
+
+  if (!opts.quiet) {
+    console.log("");
+    console.log(`  - Local:   http://localhost:${bound}`);
+    console.log(`  - Device:  ${udid}`);
+    console.log("");
+  } else {
+    console.log(
+      JSON.stringify({
+        url: `http://127.0.0.1:${bound}`,
+        streamUrl: `http://127.0.0.1:${bound}/helper/${udid}/stream.mjpeg`,
+        wsUrl: `ws://127.0.0.1:${bound}/helper/${udid}/ws`,
+        port: bound,
+        device: udid,
+        pid: process.pid,
+      }),
+    );
+  }
+
+  await new Promise(() => {});
+}
+
+function detachPreview(opts: {
+  port?: number;
+  host?: string;
+  device?: string;
+}): void {
+  const args = [fileURLToPath(import.meta.url)];
+  if (opts.port != null) args.push("-p", String(opts.port));
+  if (opts.host) args.push("--host", opts.host);
+  if (opts.device) args.push("-d", opts.device);
+  args.push("-q");
+
+  const child = spawn(process.execPath, args, {
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let out = "";
+  child.stdout?.on("data", (c) => {
+    out += String(c);
+  });
+  child.stderr?.on("data", (c) => {
+    out += String(c);
+  });
+  child.unref();
+  // Give the child a moment to print JSON state; best-effort.
+  setTimeout(() => {
+    const line = out.trim().split("\n").filter(Boolean).pop() ?? out.trim();
+    if (line) console.log(line);
+    else
+      console.log(
+        JSON.stringify({
+          detached: true,
+          pid: child.pid,
+          note: "serve-device started in background; use --list to confirm",
+        }),
+      );
+    process.exit(0);
+  }, 1500);
+}
+
 const program = new Command();
 program
   .name(PRODUCT.binName)
@@ -47,65 +148,94 @@ program
     `Starting port (preview default: ${PRODUCT.defaultPreviewPort})`,
     (v) => parseInt(v, 10),
   )
+  .option(
+    "--host <addr>",
+    "Interface to bind (default 127.0.0.1)",
+    "127.0.0.1",
+  )
+  .option("-d, --device <udid|name>", "Target physical device")
   .option("-l, --list", "List running serve-device servers as JSON")
   .option("-k, --kill", "Stop serve-device servers recorded in its state dir")
-  .option("-q, --quiet", "Quiet mode");
+  .option("--detach", "Start preview server in the background")
+  .option("-q, --quiet", "Quiet / JSON-only mode");
 
-program.action((opts: { list?: boolean; kill?: boolean; quiet?: boolean }) => {
-  if (opts.list) {
-    const states = listStreams();
-    if (opts.quiet) {
-      console.log(JSON.stringify(states));
-    } else if (states.length === 0) {
-      console.log(JSON.stringify({ running: false }));
-    } else if (states.length === 1) {
-      const s = states[0]!;
-      console.log(
-        JSON.stringify({
-          running: true,
-          url: s.url,
-          streamUrl: s.streamUrl,
-          wsUrl: s.wsUrl,
-          port: s.port,
-          device: s.device,
-          pid: s.pid,
-        }),
-      );
-    } else {
-      console.log(
-        JSON.stringify({
-          running: true,
-          streams: states.map((s) => ({
+program.action(
+  async (opts: {
+    list?: boolean;
+    kill?: boolean;
+    quiet?: boolean;
+    detach?: boolean;
+    port?: number;
+    host?: string;
+    device?: string;
+  }) => {
+    if (opts.list) {
+      const states = listStreams();
+      if (opts.quiet) {
+        console.log(JSON.stringify(states));
+      } else if (states.length === 0) {
+        console.log(JSON.stringify({ running: false }));
+      } else if (states.length === 1) {
+        const s = states[0]!;
+        console.log(
+          JSON.stringify({
+            running: true,
             url: s.url,
             streamUrl: s.streamUrl,
             wsUrl: s.wsUrl,
             port: s.port,
             device: s.device,
             pid: s.pid,
-          })),
+          }),
+        );
+      } else {
+        console.log(
+          JSON.stringify({
+            running: true,
+            streams: states.map((s) => ({
+              url: s.url,
+              streamUrl: s.streamUrl,
+              wsUrl: s.wsUrl,
+              port: s.port,
+              device: s.device,
+              pid: s.pid,
+            })),
+          }),
+        );
+      }
+      return;
+    }
+
+    if (opts.kill) {
+      const before = listStreams();
+      killStreams();
+      console.log(
+        JSON.stringify({
+          disconnected: true,
+          devices: before.map((s) => s.device),
         }),
       );
+      return;
     }
-    return;
-  }
 
-  if (opts.kill) {
-    const before = listStreams();
-    killStreams();
-    console.log(
-      JSON.stringify({
-        disconnected: true,
-        devices: before.map((s) => s.device),
-      }),
-    );
-    return;
-  }
-
-  console.error(
-    `${PRODUCT.binName}: device streaming lands in a later release. Try \`${PRODUCT.binName} doctor\` or \`${PRODUCT.binName} --help\`.`,
-  );
-  process.exitCode = 1;
-});
+    await withErrors(async () => {
+      if (opts.detach) {
+        detachPreview({
+          port: opts.port,
+          host: opts.host,
+          device: opts.device,
+        });
+        return;
+      }
+      await servePreview({
+        port: opts.port,
+        host: opts.host,
+        device: opts.device,
+        quiet: opts.quiet,
+      });
+    });
+  },
+);
 
 program
   .command("tap")

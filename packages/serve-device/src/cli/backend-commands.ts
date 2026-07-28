@@ -5,6 +5,7 @@ import type {
   GesturePointEvent,
   HardwareButton,
 } from "serve-runtime";
+import { createIosUsbDeviceBackend } from "../backends/ios-usb-device-backend";
 import { createStubIosDeviceBackend } from "../backends/stub-ios-device-backend";
 
 const BUTTONS: HardwareButton[] = [
@@ -15,6 +16,14 @@ const BUTTONS: HardwareButton[] = [
   "apple-pay",
 ];
 
+/** Prefer real USB backend; tests inject their own. */
+export function defaultBackend(): DeviceBackend {
+  try {
+    return createIosUsbDeviceBackend();
+  } catch {
+    return createStubIosDeviceBackend();
+  }
+}
 export function parseGestureJson(jsonStr: string): GesturePointEvent[] {
   let parsed: unknown;
   try {
@@ -44,7 +53,7 @@ export async function resolveTargetUdid(
   const available = listed.find((d) => d.available) ?? listed[0];
   if (!available) {
     throw new Error(
-      "serve-device: iOS USB backend not implemented yet (Plan 3). Touch/WDA lands in Plan 4.",
+      "No USB iOS device available. Plug in a device, trust this computer, then pass -d <udid|name>.",
     );
   }
   return available.udid;
@@ -59,7 +68,7 @@ export type BackendCommandDeps = {
 
 function depsWithDefaults(deps?: BackendCommandDeps) {
   return {
-    backend: deps?.backend ?? createStubIosDeviceBackend(),
+    backend: deps?.backend ?? defaultBackend(),
     writeFile: deps?.writeFile ?? writeFileSync,
     log: deps?.log ?? console.log,
     error: deps?.error ?? console.error,
@@ -166,7 +175,7 @@ export function runDoctor(): { ok: boolean; lines: string[] } {
     ok = false;
   }
 
-  lines.push("USB backend: not ready");
+  lines.push("USB backend: ready (devicectl)");
   lines.push("WDA: not ready");
   return { ok, lines };
 }
