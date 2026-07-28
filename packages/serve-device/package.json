@@ -1,0 +1,29 @@
+{
+  "name": "serve-device",
+  "version": "0.0.1",
+  "type": "module",
+  "license": "Apache-2.0",
+  "bin": {
+    "serve-device": "dist/serve-device.js"
+  },
+  "files": [
+    "dist/serve-device.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "bun run build.ts",
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "commander": "^14.0.1",
+    "serve-runtime": "workspace:*",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.7.0"
+  }
+}
