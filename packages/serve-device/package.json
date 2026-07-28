@@ -14,7 +14,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "bun run build.ts",
+    "build": "bun ./build.ts",
     "test": "bun test src"
   },
   "dependencies": {

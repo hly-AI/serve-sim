@@ -4,6 +4,15 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { PRODUCT } from "./product";
 import { killStreams, listStreams } from "./cli/list-kill";
+import {
+  runButton,
+  runDoctor,
+  runGesture,
+  runInstall,
+  runLaunch,
+  runScreenshot,
+  runTap,
+} from "./cli/backend-commands";
 
 function resolveVersion(): string {
   try {
@@ -16,6 +25,15 @@ function resolveVersion(): string {
     return pkg.version ?? "0.0.0";
   } catch {
     return "0.0.0";
+  }
+}
+
+async function withErrors(fn: () => Promise<void> | void): Promise<void> {
+  try {
+    await fn();
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
   }
 }
 
@@ -89,4 +107,68 @@ program.action((opts: { list?: boolean; kill?: boolean; quiet?: boolean }) => {
   process.exitCode = 1;
 });
 
-program.parse();
+program
+  .command("tap")
+  .description("Tap at normalized (0..1) coordinates")
+  .argument("<x>", "Normalized X")
+  .argument("<y>", "Normalized Y")
+  .option("-d, --device <udid|name>", "Target device")
+  .action(async (x: string, y: string, opts: { device?: string }) => {
+    await withErrors(() => runTap(x, y, opts.device));
+  });
+
+program
+  .command("gesture")
+  .description("Send gesture JSON (begin/move/end events)")
+  .argument("<json>", "Gesture event array JSON")
+  .option("-d, --device <udid|name>", "Target device")
+  .action(async (json: string, opts: { device?: string }) => {
+    await withErrors(() => runGesture(json, opts.device));
+  });
+
+program
+  .command("button")
+  .description("Press a hardware button")
+  .argument("[name]", "Button name", "home")
+  .option("-d, --device <udid|name>", "Target device")
+  .action(async (name: string, opts: { device?: string }) => {
+    await withErrors(() => runButton(name, opts.device));
+  });
+
+program
+  .command("screenshot")
+  .description("Capture a screenshot")
+  .option("-d, --device <udid|name>", "Target device")
+  .option("-o, --output <path>", "Output file path")
+  .action(async (opts: { device?: string; output?: string }) => {
+    await withErrors(() => runScreenshot(opts.device, opts.output));
+  });
+
+program
+  .command("install")
+  .description("Install an .app / .ipa onto the device")
+  .argument("<path>", "Path to app bundle")
+  .option("-d, --device <udid|name>", "Target device")
+  .action(async (path: string, opts: { device?: string }) => {
+    await withErrors(() => runInstall(path, opts.device));
+  });
+
+program
+  .command("launch")
+  .description("Launch an installed app by bundle id")
+  .argument("<bundle-id>", "Bundle identifier")
+  .option("-d, --device <udid|name>", "Target device")
+  .action(async (bundleId: string, opts: { device?: string }) => {
+    await withErrors(() => runLaunch(bundleId, opts.device));
+  });
+
+program
+  .command("doctor")
+  .description("Check host prerequisites for serve-device")
+  .action(() => {
+    const report = runDoctor();
+    for (const line of report.lines) console.log(line);
+    if (!report.ok) process.exitCode = 1;
+  });
+
+await program.parseAsync(process.argv);
