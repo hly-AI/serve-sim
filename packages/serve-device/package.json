@@ -1,13 +1,20 @@
 {
-  "name": "serve-device",
-  "version": "0.0.1",
+  "name": "device-see",
+  "version": "0.1.0",
+  "description": "Stream a physical iOS device screen in the browser (npx device-see)",
   "type": "module",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hly-AI/serve-sim.git",
+    "directory": "packages/serve-device"
+  },
   "bin": {
-    "serve-device": "dist/serve-device.js"
+    "device-see": "dist/device-see.js",
+    "serve-device": "dist/device-see.js"
   },
   "files": [
-    "dist/serve-device.js",
+    "dist/device-see.js",
     "README.md"
   ],
   "engines": {
@@ -15,15 +22,24 @@
   },
   "scripts": {
     "build": "bun ./build.ts",
-    "test": "bun test src"
+    "test": "bun test src",
+    "prepublishOnly": "bun ./build.ts"
   },
   "dependencies": {
-    "commander": "^14.0.1",
-    "serve-runtime": "workspace:*",
     "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
+    "commander": "^14.0.1",
+    "serve-runtime": "workspace:*",
     "typescript": "^5.7.0"
-  }
+  },
+  "keywords": [
+    "ios",
+    "device",
+    "screenshot",
+    "mjpeg",
+    "devicectl",
+    "serve-device"
+  ]
 }

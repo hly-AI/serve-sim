@@ -44,7 +44,7 @@ const HTML_TEMPLATE = `<!doctype html>
       const meta = document.getElementById("meta");
       const err = document.getElementById("err");
       img.src = "/helper/" + encodeURIComponent(udid) + "/stream.mjpeg";
-      meta.textContent = "serve-device · " + udid + " · USB MJPEG";
+      meta.textContent = "device-see · " + udid + " · USB MJPEG";
       async function pollHealth() {
         try {
           const r = await fetch("/helper/" + encodeURIComponent(udid) + "/health");

@@ -14,7 +14,7 @@ describe("product identity", () => {
     expect(SERVE_SIM_PRODUCT.defaultHelperPort).not.toBe(
       SERVE_DEVICE_PRODUCT.defaultHelperPort,
     );
-    expect(SERVE_DEVICE_PRODUCT.binName).toBe("serve-device");
+    expect(SERVE_DEVICE_PRODUCT.binName).toBe("device-see");
     expect(SERVE_DEVICE_PRODUCT.defaultPreviewPort).toBe(4200);
     expect(SERVE_DEVICE_PRODUCT.defaultHelperPort).toBe(4100);
   });

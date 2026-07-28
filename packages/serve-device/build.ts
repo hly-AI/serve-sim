@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * Bundle serve-device CLI for Node (`npx serve-device`).
- * Inlines workspace `serve-runtime`; keeps `ws` external like serve-sim.
+ * Bundle device-see / serve-device CLI for Node (`npx device-see`).
+ * Inlines workspace `serve-runtime` + commander; keeps `ws` external.
  */
 import { resolve } from "path";
 import { mkdirSync, rmSync, chmodSync, readFileSync, writeFileSync } from "fs";
@@ -17,7 +17,7 @@ const result = await Bun.build({
   format: "esm",
   minify: true,
   outdir: distDir,
-  naming: "serve-device.js",
+  naming: "device-see.js",
   external: [
     "fs",
     "path",
@@ -39,13 +39,13 @@ const result = await Bun.build({
 });
 
 if (!result.success) {
-  console.error("serve-device bin build failed:");
+  console.error("device-see bin build failed:");
   for (const log of result.logs) console.error(log);
   process.exit(1);
 }
 
-const outPath = resolve(distDir, "serve-device.js");
+const outPath = resolve(distDir, "device-see.js");
 const body = readFileSync(outPath, "utf-8");
 writeFileSync(outPath, `#!/usr/bin/env node\n${body}`);
 chmodSync(outPath, 0o755);
-console.log(`dist/serve-device.js  ${(body.length / 1024).toFixed(1)} KB`);
+console.log(`dist/device-see.js  ${(body.length / 1024).toFixed(1)} KB`);

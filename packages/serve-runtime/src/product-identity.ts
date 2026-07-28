@@ -15,7 +15,7 @@ export const SERVE_SIM_PRODUCT: ProductIdentity = {
 };
 
 export const SERVE_DEVICE_PRODUCT: ProductIdentity = {
-  binName: "serve-device",
+  binName: "device-see",
   stateDirName: "serve-device",
   defaultPreviewPort: 4200,
   defaultHelperPort: 4100,
