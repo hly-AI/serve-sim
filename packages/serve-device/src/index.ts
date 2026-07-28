@@ -140,6 +140,10 @@ function detachPreview(opts: {
 }
 
 const program = new Command();
+// Parent also declares -d/--device for the default preview action. Without this,
+// Commander assigns those flags to the parent and subcommands like `setup`
+// never see a required --device value.
+program.enablePositionalOptions();
 program
   .name(PRODUCT.binName)
   .description("Stream and control a physical iOS device from the browser / CLI")

@@ -85,14 +85,25 @@ export function createIosUsbDeviceBackend(deps?: {
   }
 
   async function resolveDevice(nameOrUdid: string): Promise<string> {
-    const devices = await listDevices();
-    const hit = devices.find(
-      (d) =>
+    // Match hardware UDID, CoreDevice `identifier` (shown in `devicectl list`
+    // tables), or device name. Always return the hardware UDID for later argv.
+    const raw = deps?.listDevicesRaw
+      ? deps.listDevicesRaw()
+      : listDevicectlDevices();
+    const needle = nameOrUdid.toLowerCase();
+    for (const d of raw) {
+      if (d.reality != null && d.reality !== "physical") continue;
+      if (d.platform != null && !/^iOS$/i.test(d.platform)) continue;
+      if (isNetworkTransport(d.connectionProperties?.transportType)) continue;
+      if (
         d.udid === nameOrUdid ||
-        d.name.toLowerCase() === nameOrUdid.toLowerCase(),
-    );
-    if (!hit) throw new Error(`Could not resolve device: ${nameOrUdid}`);
-    return hit.udid;
+        d.identifier === nameOrUdid ||
+        d.name.toLowerCase() === needle
+      ) {
+        return d.udid;
+      }
+    }
+    throw new Error(`Could not resolve device: ${nameOrUdid}`);
   }
 
   async function defaultScreenshot(udid: string): Promise<Buffer> {
